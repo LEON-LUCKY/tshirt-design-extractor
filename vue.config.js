@@ -1,6 +1,9 @@
 const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
   transpileDependencies: true,
+  publicPath: process.env.NODE_ENV === 'production'
+    ? '/'  // Netlify 部署使用根路径
+    : '/',
   devServer: {
     port: 8081,
     proxy: {
@@ -14,7 +17,7 @@ module.exports = defineConfig({
         headers: {
           'X-Api-Key': process.env.VUE_APP_REMOVE_BG_API_KEY
         },
-        onProxyReq: (proxyReq, req, res) => {
+        onProxyReq: (proxyReq) => {
           // 添加 API 密钥到请求头
           if (process.env.VUE_APP_REMOVE_BG_API_KEY) {
             proxyReq.setHeader('X-Api-Key', process.env.VUE_APP_REMOVE_BG_API_KEY);
@@ -24,3 +27,4 @@ module.exports = defineConfig({
     }
   }
 })
+
