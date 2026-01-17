@@ -11,6 +11,7 @@
  */
 
 import CanvasUtility from './CanvasUtility';
+import PatternExtractor from './PatternExtractor';
 import {
   MAX_IMAGE_WIDTH,
   MAX_IMAGE_HEIGHT,
@@ -20,7 +21,9 @@ import {
   CACHE_EXPIRATION_TIME,
   ERROR_TYPES,
   ERROR_CODES,
-  ERROR_MESSAGES
+  ERROR_MESSAGES,
+  ENABLE_PATTERN_EXTRACTION,
+  PATTERN_PADDING
 } from '../constants';
 
 /**
@@ -32,6 +35,7 @@ import {
 class ImageProcessorService {
   constructor() {
     this.canvasUtil = CanvasUtility;
+    this.patternExtractor = PatternExtractor;
     this.backgroundRemovalApi = null;
     
     // Cache for processed results
@@ -110,24 +114,35 @@ class ImageProcessorService {
 
       // Load image to get dimensions
       const originalImage = await this.canvasUtil.loadImage(originalDataUrl);
-      const width = originalImage.width;
-      const height = originalImage.height;
 
       // Compress image if it's too large
       const imageBlob = await this._prepareImageForApi(imageFile, originalImage);
 
-      // Remove background via API
-      const extractedBlob = await this.removeBackground(imageBlob);
+      // Remove background via API with auto-crop enabled
+      const extractedBlob = await this.removeBackground(imageBlob, {
+        size: 'auto',
+        type: 'auto',
+        format: 'png',
+        crop: ENABLE_PATTERN_EXTRACTION,      // 使用 API 的自动裁剪
+        crop_margin: `${PATTERN_PADDING}px`   // 裁剪边距
+      });
 
       // Convert extracted result to DataURL
-      const extractedDataUrl = await this.blobToDataUrl(extractedBlob);
+      const finalDataUrl = await this.blobToDataUrl(extractedBlob);
+      
+      // Load the result to get final dimensions
+      const finalImage = await this.canvasUtil.loadImage(finalDataUrl);
+      const finalWidth = finalImage.width;
+      const finalHeight = finalImage.height;
+      
+      console.log('[ImageProcessor] 最终尺寸:', finalWidth, 'x', finalHeight);
 
       // Prepare result object
       const result = {
         originalDataUrl,
-        extractedDataUrl,
-        width,
-        height,
+        extractedDataUrl: finalDataUrl,
+        width: finalWidth,
+        height: finalHeight,
         processingTime: Date.now() - startTime,
         fromCache: false
       };
@@ -201,12 +216,13 @@ class ImageProcessorService {
    * The API service handles retries and error handling internally.
    * 
    * @param {Blob} imageBlob - Image blob to process
+   * @param {Object} options - Processing options
    * @returns {Promise<Blob>} Processed image with background removed
    * @throws {Error} If API call fails
    * 
    * Requirements: 2.2
    */
-  async removeBackground(imageBlob) {
+  async removeBackground(imageBlob, options = {}) {
     if (!this.backgroundRemovalApi) {
       throw this._createError(
         ERROR_TYPES.API_ERROR,
@@ -215,12 +231,20 @@ class ImageProcessorService {
       );
     }
 
+    // 使用 Remove.bg API 的 crop 参数自动裁剪
+    const apiOptions = {
+      size: options.size || 'auto',
+      type: options.type || 'auto',
+      format: options.format || 'png',
+      crop: true,              // 自动裁剪空白区域
+      crop_margin: '20px',     // 裁剪边距
+      ...options
+    };
+
+    console.log('[ImageProcessor] API 选项:', apiOptions);
+
     // Call API service (it handles retries internally)
-    const resultBlob = await this.backgroundRemovalApi.removeBackground(imageBlob, {
-      size: 'auto',
-      type: 'auto',
-      format: 'png'
-    });
+    const resultBlob = await this.backgroundRemovalApi.removeBackground(imageBlob, apiOptions);
 
     return resultBlob;
   }

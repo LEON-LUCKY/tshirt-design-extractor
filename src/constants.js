@@ -212,6 +212,25 @@ export const ERROR_MESSAGE_DURATION = 5000;
 export const DEBUG_MODE = process.env.VUE_APP_DEBUG === 'true';
 
 // ============================================================================
+// Pattern Extraction Constants
+// ============================================================================
+
+/**
+ * Enable pattern extraction (crop to pattern bounds)
+ * If true, only the pattern will be extracted (not the whole t-shirt)
+ * If false, the whole t-shirt will be kept (background removed)
+ */
+export const ENABLE_PATTERN_EXTRACTION = process.env.VUE_APP_ENABLE_PATTERN_EXTRACTION !== 'false';
+
+/**
+ * Pattern extraction padding in pixels
+ * Adds padding around the detected pattern bounds
+ */
+export const PATTERN_PADDING = process.env.VUE_APP_PATTERN_PADDING
+  ? parseInt(process.env.VUE_APP_PATTERN_PADDING, 10)
+  : 20;
+
+// ============================================================================
 // Download Constants
 // ============================================================================
 

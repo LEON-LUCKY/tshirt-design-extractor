@@ -85,6 +85,10 @@ export class RemoveBgService extends BackgroundRemovalAPI {
    * @param {string} options.size - Output size ('auto', 'preview', 'full', 'medium', 'hd', '4k')
    * @param {string} options.type - Foreground type ('auto', 'person', 'product', 'car')
    * @param {string} options.format - Output format ('auto', 'png', 'jpg', 'zip')
+   * @param {boolean} options.crop - Whether to crop off all empty regions
+   * @param {string} options.crop_margin - Margin around the cropped subject (e.g. '20px', '10%')
+   * @param {string} options.position - Position of subject ('original', 'center', '0%', '50%')
+   * @param {string} options.roi - Region of interest ('0% 0% 100% 100%')
    * @returns {Promise<Blob>} - The processed image with background removed
    * @throws {Error} - Throws error with type and details for different failure scenarios
    */
@@ -92,7 +96,11 @@ export class RemoveBgService extends BackgroundRemovalAPI {
     const {
       size = 'auto',
       type = 'auto',
-      format = 'png'
+      format = 'png',
+      crop = false,
+      crop_margin = '0px',
+      position = 'original',
+      roi = '0% 0% 100% 100%'
     } = options;
 
     // Validate input
@@ -110,6 +118,28 @@ export class RemoveBgService extends BackgroundRemovalAPI {
     formData.append('size', size);
     formData.append('type', type);
     formData.append('format', format);
+    
+    // 添加裁剪参数
+    if (crop) {
+      formData.append('crop', 'true');
+      if (crop_margin) {
+        formData.append('crop_margin', crop_margin);
+      }
+    }
+    
+    // 添加位置参数
+    if (position && position !== 'original') {
+      formData.append('position', position);
+    }
+    
+    // 添加感兴趣区域参数
+    if (roi && roi !== '0% 0% 100% 100%') {
+      formData.append('roi', roi);
+    }
+
+    console.log('[RemoveBgService] 请求参数:', {
+      size, type, format, crop, crop_margin, position, roi
+    });
 
     // Execute with retry logic
     return await this._executeWithRetry(async () => {
@@ -129,6 +159,8 @@ export class RemoveBgService extends BackgroundRemovalAPI {
             'Invalid response from API'
           );
         }
+
+        console.log('[RemoveBgService] API 响应成功，图片大小:', response.data.size, 'bytes');
 
         return response.data;
       } catch (error) {
