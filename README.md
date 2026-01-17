@@ -24,6 +24,8 @@
 npm install
 ```
 
+**注意**: 如果遇到依赖冲突，请参考 [INSTALL.md](./INSTALL.md) 获取详细的安装指南。
+
 ### 配置环境变量
 
 1. 复制 `.env.example` 文件并重命名为 `.env`：
