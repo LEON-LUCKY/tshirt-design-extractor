@@ -369,10 +369,13 @@ export default {
      */
     handleProcessingError(err) {
       // Check if it's already a structured error
-      if (err.type && err.code) {
+      if (err && err.type && err.code && typeof err.message === 'string' && typeof err.retryable === 'boolean') {
         this.handleError(err);
         return;
       }
+      
+      // Convert Error object to plain object
+      const errorMessage = err && err.message ? err.message : String(err);
       
       // Determine error type based on error message/properties
       let errorType = ERROR_TYPES.PROCESSING_ERROR;
@@ -380,12 +383,12 @@ export default {
       let retryable = true;
       
       // Network errors
-      if (err.message && (err.message.includes('network') || err.message.includes('fetch'))) {
+      if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Network')) {
         errorType = ERROR_TYPES.NETWORK_ERROR;
         errorCode = ERROR_CODES.NETWORK_OFFLINE;
       }
       // API errors
-      else if (err.response) {
+      else if (err && err.response) {
         errorType = ERROR_TYPES.API_ERROR;
         
         // Map HTTP status codes to error codes
@@ -404,11 +407,12 @@ export default {
         }
       }
       
+      // Create a plain object error (not Error instance)
       this.handleError({
         type: errorType,
         code: errorCode,
         message: ERROR_MESSAGES[errorCode] || '处理失败，请重试',
-        details: err.message,
+        details: errorMessage,
         retryable
       });
     },
@@ -420,7 +424,18 @@ export default {
      * @param {Object} error - Structured error object
      */
     handleError(error) {
-      this.error = error;
+      // Ensure error is a plain object, not an Error instance
+      if (error instanceof Error) {
+        this.error = {
+          type: ERROR_TYPES.PROCESSING_ERROR,
+          code: ERROR_CODES.CANVAS_ERROR,
+          message: error.message || '处理失败，请重试',
+          details: error.stack || '',
+          retryable: true
+        };
+      } else {
+        this.error = error;
+      }
       this.processingStatus = PROCESSING_STATUS.ERROR;
       this.isProcessing = false;
     },

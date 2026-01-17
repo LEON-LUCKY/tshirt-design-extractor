@@ -131,11 +131,14 @@ export default {
      * Error object if processing failed
      */
     error: {
-      type: Object,
+      type: [Object, null],
       default: null,
       validator: (value) => {
-        if (value === null) return true;
+        if (value === null || value === undefined) return true;
+        // Accept plain objects with message and retryable properties
         return (
+          value &&
+          typeof value === 'object' &&
           typeof value.message === 'string' &&
           typeof value.retryable === 'boolean'
         );
